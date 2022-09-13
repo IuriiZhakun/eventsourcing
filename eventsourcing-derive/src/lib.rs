@@ -179,16 +179,19 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
         .unwrap_or_else(|| parse_quote!(NoAggregate));
 
     quote! {
+
+        use async_trait::async_trait;
+        #[async_trait(?Send)]
         impl #impl_generics ::eventsourcing::Dispatcher for #name #where_clause {
             type Aggregate = #aggregate;
             type Event = <#aggregate as Aggregate>::Event;
             type Command = <#aggregate as Aggregate>::Command;
             type State = <#aggregate as Aggregate>::State;
 
-            fn dispatch(
+            async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
-                store: &impl ::eventsourcing::eventstore::EventStore,
+                store: &impl ::eventsourcing::eventstore::EventStoreClient,
                 stream: &str,
             ) -> Vec<Result<::eventsourcing::cloudevents::CloudEvent>> {
                 match Self::Aggregate::handle_command(state, cmd) {

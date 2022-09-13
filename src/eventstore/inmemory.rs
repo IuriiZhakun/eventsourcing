@@ -9,7 +9,7 @@ use super::super::cloudevents::CloudEvent;
 use super::super::Event;
 use super::super::Result;
 #[cfg(feature = "eventstore")]
-use super::EventStore;
+use super::EventStoreClient;
 use chrono::prelude::*;
 use std::sync::Mutex;
 #[cfg(feature = "eventstore")]
@@ -26,10 +26,13 @@ impl MemoryEventStore {
         }
     }
 }
+
+use async_trait::async_trait;
 #[cfg(feature = "eventstore")]
-impl EventStore for MemoryEventStore {
+#[async_trait(?Send)]
+impl EventStoreClient for MemoryEventStore {
     /// Appends an event to the in-memory store
-    fn append(&self, evt: impl Event, _stream: &str) -> Result<CloudEvent> {
+    async fn append(&self, evt: impl Event, _stream: &str) -> Result<CloudEvent> {
         let mut guard = self.evts.lock().unwrap();
         let cloud_event = CloudEvent::from(evt);
         guard.push(cloud_event.clone());

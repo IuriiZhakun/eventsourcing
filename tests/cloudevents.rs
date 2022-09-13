@@ -11,6 +11,9 @@ use chrono::prelude::*;
 #[cfg(feature = "eventstore")]
 use eventsourcing::prelude::*;
 
+// use crate::eventsourcing::eventstore::EventStore;
+// use eventsourcing::cloudevents::CloudEvent;
+
 const DOMAIN_VERSION: &str = "1.0";
 
 #[derive(Serialize, Deserialize, Event)]

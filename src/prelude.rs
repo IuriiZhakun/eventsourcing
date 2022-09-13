@@ -1,8 +1,7 @@
 //! Standard prelude for eventsourcing applications
-pub use super::{Aggregate, AggregateState, Event, Kind};
-
+pub use super::{Aggregate, AggregateState, Dispatcher, Event, Kind};
 
 #[cfg(feature = "orgeventstore")]
 pub use super::CloudEvent;
 #[cfg(feature = "orgeventstore")]
-pub use crate::eventstore::EventStore;
+pub use crate::eventstore::EventStoreClient;

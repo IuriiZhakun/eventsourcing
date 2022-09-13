@@ -1,6 +1,6 @@
 const DOMAIN_VERSION: &str = "1.0";
 
-use eventsourcing::{Aggregate, AggregateState, Result};
+use eventsourcing::{Aggregate, AggregateState, Dispatcher, Result};
 
 #[derive(Debug)]
 pub enum CombatCommand {

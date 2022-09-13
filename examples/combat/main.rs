@@ -8,6 +8,7 @@ extern crate serde_json;
 
 mod domain;
 
+use crate::eventsourcing::Dispatcher;
 use domain::{CombatCommand, CombatDispatcher, CombatEvent, CombatState};
 use eventsourcing::eventstore::OrgEventStore;
 use eventsourcing::prelude::*;

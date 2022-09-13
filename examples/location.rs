@@ -5,6 +5,7 @@ extern crate eventsourcing;
 extern crate serde_json;
 #[macro_use]
 extern crate eventsourcing_derive;
+use tokio;
 
 use eventsourcing::{eventstore::MemoryEventStore, prelude::*, Result};
 
@@ -67,7 +68,8 @@ impl Aggregate for Location {
     }
 }
 
-fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let location_store = MemoryEventStore::new();
 
     let update = LocationCommand::UpdateLocation {
@@ -87,7 +89,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Second, apply the events to get a new state
     let state = Location::apply_all(&old_state, &res)?;
     // Third, append to store (can do this alternatively with a dispatcher)
-    let store_result = location_store.append(res[0].clone(), "locations")?;
+    let store_result = location_store.append(res[0].clone(), "locations").await?;
     println!("Store result: {:?}", store_result);
 
     println!("Original state: {:?}", old_state);

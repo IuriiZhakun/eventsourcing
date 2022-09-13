@@ -122,7 +122,7 @@ extern crate uuid;
 pub use cloudevents::CloudEvent;
 
 #[cfg(feature = "eventstore")]
-use eventstore::EventStore;
+use crate::eventstore::EventStoreClient;
 use serde::Serialize;
 use std::fmt;
 
@@ -217,7 +217,7 @@ pub trait Dispatcher {
     fn dispatch(
         state: &Self::State,
         cmd: &Self::Command,
-        store: &impl EventStore,
+        store: &impl EventStoreClient,
         stream: &str,
     ) -> Vec<Result<CloudEvent>>;
 }

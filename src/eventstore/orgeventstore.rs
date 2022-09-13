@@ -4,7 +4,7 @@
 use super::super::cloudevents::CloudEvent;
 use super::super::{Error, Event, Kind, Result};
 #[cfg(feature = "orgeventstore")]
-use super::EventStore;
+use super::EventStoreClient;
 use reqwest::header::{HeaderMap, CONTENT_TYPE};
 use reqwest::StatusCode;
 
@@ -53,8 +53,10 @@ fn generate_headers() -> HeaderMap {
     headers
 }
 
-impl EventStore for OrgEventStore {
-    fn append(&self, evt: impl Event, stream: &str) -> Result<CloudEvent> {
+use async_trait::async_trait;
+#[async_trait(?Send)]
+impl EventStoreClient for OrgEventStore {
+    async fn append(&self, evt: impl Event, stream: &str) -> Result<CloudEvent> {
         let ce: CloudEvent = evt.into();
         let se = vec![StoreEvent {
             event_id: ce.event_id.to_owned(),
