@@ -167,7 +167,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// about the event, including the type name, the type version, and a source
 /// to be used when events are emitted. If you use the derive macro fror events,
 /// you do not have to implement these functions manually.
-pub trait Event: Serialize {
+pub trait Event: Serialize + Send {
     fn event_type_version(&self) -> &str;
     fn event_type(&self) -> &str;
     fn event_source(&self) -> &str;

@@ -29,7 +29,8 @@ impl MemoryEventStore {
 
 use async_trait::async_trait;
 #[cfg(feature = "eventstore")]
-#[async_trait(?Send)]
+//#[async_trait(?Send)]
+#[async_trait]
 impl EventStoreClient for MemoryEventStore {
     /// Appends an event to the in-memory store
     async fn append(&self, evt: impl Event, _stream: &str) -> Result<CloudEvent> {
@@ -38,21 +39,20 @@ impl EventStoreClient for MemoryEventStore {
         guard.push(cloud_event.clone());
         Ok(cloud_event)
     }
-}
-
-#[cfg(feature = "eventstore")]
-impl MemoryEventStore {
-    pub fn get_all(&self, event_type: &str) -> Result<Vec<CloudEvent>> {
+    async fn get_all(&self, stream: &str) -> Result<Vec<CloudEvent>> {
         let guard = self.evts.lock().unwrap();
         let matches = guard
             .iter()
-            .filter(|evt| evt.event_type == event_type)
+            .filter(|evt| evt.event_type == stream)
             .cloned()
             .collect();
 
         Ok(matches)
     }
+}
 
+#[cfg(feature = "eventstore")]
+impl MemoryEventStore {
     pub fn get_from(&self, event_type: &str, start: DateTime<Utc>) -> Result<Vec<CloudEvent>> {
         let guard = self.evts.lock().unwrap();
         let matches = guard

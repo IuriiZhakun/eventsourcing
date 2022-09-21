@@ -179,7 +179,6 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
         .unwrap_or_else(|| parse_quote!(NoAggregate));
 
     quote! {
-
         use async_trait::async_trait;
         #[async_trait(?Send)]
         impl #impl_generics ::eventsourcing::Dispatcher for #name #where_clause {

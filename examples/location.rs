@@ -97,7 +97,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "all events - {:#?}",
-        location_store.get_all("locationevent.locationupdated")
+        location_store
+            .get_all("locationevent.locationupdated")
+            .await?
     );
 
     Ok(())
