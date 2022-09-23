@@ -186,14 +186,16 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
             type Event = <#aggregate as Aggregate>::Event;
             type Command = <#aggregate as Aggregate>::Command;
             type State = <#aggregate as Aggregate>::State;
+            type Services = <#aggregate as Aggregate>::Services;
 
             async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
+                services: &Self::Services,
                 store: &impl ::eventsourcing::eventstore::EventStoreClient,
                 stream: &str,
             ) -> Vec<Result<::eventsourcing::cloudevents::CloudEvent>> {
-                match Self::Aggregate::handle_command(state, cmd) {
+                match Self::Aggregate::handle_command(state, cmd, services) {
                     Ok(evts) => evts.into_iter().map(|evt| store.append(evt, stream)).collect(),
                     Err(e) => vec![Err(e)],
                 }

@@ -115,6 +115,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+use async_trait::async_trait;
+use serde::de::DeserializeOwned;
 #[cfg(feature = "eventstore")]
 extern crate uuid;
 
@@ -187,13 +189,19 @@ pub trait AggregateState {
 /// 2. Handle commands, producing a vector of outbound events, likely candidates for publication.
 ///
 /// Both of these functions are stateless, as aggregates should also be stateless.
-pub trait Aggregate {
+#[async_trait]
+pub trait Aggregate: Default + Serialize + DeserializeOwned + Sync + Send {
     type Event: Event;
     type Command;
     type State: AggregateState + Clone;
+    type Services: Send + Sync;
 
     fn apply_event(state: &Self::State, evt: &Self::Event) -> Result<Self::State>;
-    fn handle_command(state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>>;
+    async fn handle_command(
+        state: &Self::State,
+        cmd: &Self::Command,
+        service: &Self::Services,
+    ) -> Result<Vec<Self::Event>>;
     fn apply_all(state: &Self::State, evts: &[Self::Event]) -> Result<Self::State> {
         Ok(evts.iter().fold(state.clone(), |acc_state, event| {
             Self::apply_event(&acc_state, event).unwrap()

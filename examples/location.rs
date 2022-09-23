@@ -7,6 +7,7 @@ extern crate serde_json;
 extern crate eventsourcing_derive;
 use tokio;
 
+use async_trait::async_trait;
 use eventsourcing::{eventstore::MemoryEventStore, prelude::*, Result};
 
 const DOMAIN_VERSION: &str = "1.0";
@@ -32,16 +33,21 @@ enum LocationEvent {
     LocationUpdated { lat: f32, long: f32, alt: f32 },
 }
 
+#[derive(Serialize, Deserialize, Default)]
 struct Location;
+
+struct LocationServices;
 
 enum LocationCommand {
     UpdateLocation { lat: f32, long: f32, alt: f32 },
 }
 
+#[async_trait]
 impl Aggregate for Location {
     type Event = LocationEvent;
     type Command = LocationCommand;
     type State = LocationData;
+    type Services = LocationServices;
 
     fn apply_event(state: &Self::State, evt: &Self::Event) -> Result<Self::State> {
         let ld = match *evt {
@@ -55,7 +61,11 @@ impl Aggregate for Location {
         Ok(ld)
     }
 
-    fn handle_command(_state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>> {
+    async fn handle_command(
+        _state: &Self::State,
+        cmd: &Self::Command,
+        _svc: &Self::Services,
+    ) -> Result<Vec<Self::Event>> {
         // SHOULD DO: validate state and command
         let evt = match *cmd {
             LocationCommand::UpdateLocation { lat, long, alt } => {
@@ -83,9 +93,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         alt: 15.0,
         generation: 0,
     };
-
+    let svc = LocationServices {};
     // First, handle a command to get an event vector
-    let res = Location::handle_command(&old_state, &update)?;
+    let res = Location::handle_command(&old_state, &update, &svc).await?;
     // Second, apply the events to get a new state
     let state = Location::apply_all(&old_state, &res)?;
     // Third, append to store (can do this alternatively with a dispatcher)

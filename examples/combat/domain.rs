@@ -1,4 +1,5 @@
 const DOMAIN_VERSION: &str = "1.0";
+use async_trait::async_trait;
 
 use eventsourcing::{Aggregate, AggregateState, Dispatcher, Result};
 
@@ -16,7 +17,7 @@ pub enum CombatEvent {
     UnitEvent,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CombatState {
     pub entity_id: String,
     pub hitpoints: u32,
@@ -29,17 +30,27 @@ impl AggregateState for CombatState {
     }
 }
 
+#[derive(Serialize, Deserialize, Default)]
 pub struct Combat;
+
+pub struct CombatServices;
+
+#[async_trait]
 impl Aggregate for Combat {
     type Event = CombatEvent;
     type Command = CombatCommand;
     type State = CombatState;
+    type Services = CombatServices;
 
     fn apply_event(_state: &Self::State, _evt: &Self::Event) -> Result<Self::State> {
         unimplemented!()
     }
 
-    fn handle_command(_state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>> {
+    async fn handle_command(
+        _state: &Self::State,
+        cmd: &Self::Command,
+        _svc: &Self::Services,
+    ) -> Result<Vec<Self::Event>> {
         println!("Command handled: {:#?}", cmd);
         // SHOULD DO: validate state and command
         let evt = match *cmd {
