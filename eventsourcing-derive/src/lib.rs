@@ -180,7 +180,7 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
 
     quote! {
         use async_trait::async_trait;
-        #[async_trait(?Send)]
+        #[async_trait]
         impl #impl_generics ::eventsourcing::Dispatcher for #name #where_clause {
             type Aggregate = #aggregate;
             type Event = <#aggregate as Aggregate>::Event;
@@ -191,11 +191,11 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
             async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
-                services: &Self::Services,
+                svc: &Self::Services,
                 store: &impl ::eventsourcing::eventstore::EventStoreClient,
                 stream: &str,
             ) -> Vec<Result<::eventsourcing::cloudevents::CloudEvent>> {
-                match Self::Aggregate::handle_command(state, cmd, services) {
+                match Self::Aggregate::handle_command(state, cmd, svc) {
                     Ok(evts) => evts.into_iter().map(|evt| store.append(evt, stream)).collect(),
                     Err(e) => vec![Err(e)],
                 }

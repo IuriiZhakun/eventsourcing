@@ -9,8 +9,7 @@ extern crate serde_json;
 mod domain;
 
 use crate::eventsourcing::Dispatcher;
-use domain::{CombatCommand, CombatEvent, CombatState};
-//use domain::{CombatCommand, CombatDispatcher, CombatEvent, CombatState};
+use domain::{CombatCommand, CombatDispatcher, CombatEvent, CombatState};
 use eventsourcing::eventstore::EventStoreDBClient;
 use eventsourcing::prelude::*;
 
@@ -29,6 +28,6 @@ fn main() {
     let unit = CombatEvent::UnitEvent;
     println!("{}", unit.event_type());
 
-    //let res = CombatDispatcher::dispatch(&state, &swing, &combat_store, "ogre");
-    //println!("dispatch results - {:#?}", res);
+    let res = CombatDispatcher::dispatch(&state, &swing, &combat_store, "ogre");
+    println!("dispatch results - {:#?}", res);
 }

@@ -64,6 +64,6 @@ impl Aggregate for Combat {
     }
 }
 
-//#[derive(Dispatcher)]
-//#[aggregate(Combat)]
-//pub struct CombatDispatcher;
+#[derive(Dispatcher)]
+#[aggregate(Combat)]
+pub struct CombatDispatcher;

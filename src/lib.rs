@@ -216,15 +216,23 @@ pub trait Aggregate: Default + Serialize + DeserializeOwned + Sync + Send {
 /// The result of a dispatch is a vector capturing the success of command application. If it
 /// succeeded, you will get a CloudEvent, a CloudEvents v0.1 spec-compliant data structure.
 #[cfg(feature = "orgeventstore")]
+#[async_trait]
 pub trait Dispatcher {
     type Command;
     type Event: Event;
     type State: AggregateState + Clone;
-    type Aggregate: Aggregate<Event = Self::Event, Command = Self::Command, State = Self::State>;
+    type Services: Send + Sync;
+    type Aggregate: Aggregate<
+        Event = Self::Event,
+        Command = Self::Command,
+        State = Self::State,
+        Services = Self::Services,
+    >;
 
-    fn dispatch(
+    async fn dispatch(
         state: &Self::State,
         cmd: &Self::Command,
+        svc: &Self::Services,
         store: &impl EventStoreClient,
         stream: &str,
     ) -> Vec<Result<CloudEvent>>;
