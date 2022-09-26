@@ -4,15 +4,16 @@
 #![recursion_limit = "128"]
 
 extern crate proc_macro;
-#[macro_use]
 extern crate quote;
-#[macro_use]
 extern crate syn;
 
 use proc_macro::TokenStream;
-use quote::Tokens;
+use quote::quote;
+use syn::parse::Parse;
+use syn::parse::ParseStream;
+use syn::parse::Result;
+use syn::parse_quote;
 use syn::punctuated::Punctuated;
-use syn::synom::Synom;
 use syn::token::Comma;
 use syn::{Data, DataEnum, DeriveInput, Fields, Ident, LitStr, Path, Variant};
 
@@ -20,8 +21,7 @@ use syn::{Data, DataEnum, DeriveInput, Fields, Ident, LitStr, Path, Variant};
 #[proc_macro_derive(Dispatcher, attributes(aggregate))]
 pub fn component(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    let gen = impl_component(&ast);
-    gen.into()
+    impl_component(&ast)
 }
 
 /// Derives the boilerplate code for an Event
@@ -53,28 +53,48 @@ struct AggregateAttribute {
     aggregate: Path,
 }
 
-impl Synom for EventSourceAttribute {
-    named!(parse -> Self, map!(
-        parens!(syn!(LitStr)),
-        |(_, event_source)| EventSourceAttribute { event_source }
-    ));
+impl Parse for EventSourceAttribute {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(EventSourceAttribute {
+            event_source: input.parse()?,
+        })
+    }
 }
 
-impl Synom for AggregateAttribute {
-    named!(parse -> Self, map!(
-        parens!(syn!(Path)),
-        |(_, aggregate)| AggregateAttribute { aggregate }
-    ));
+impl Parse for EventTypeVersionAttribute {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(EventTypeVersionAttribute {
+            event_type_version: input.parse()?,
+        })
+    }
 }
 
-impl Synom for EventTypeVersionAttribute {
-    named!(parse -> Self, map!(
-        parens!(syn!(Ident)),
-        |(_, event_type_version) | EventTypeVersionAttribute { event_type_version }
-    ));
+impl Parse for AggregateAttribute {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(AggregateAttribute {
+            aggregate: input.parse()?,
+        })
+    }
 }
 
-fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> Tokens {
+//impl Synom for AggregateAttribute {
+//    named!(parse -> Self, map!(
+//        parens!(syn!(Path)),
+//        |(_, aggregate)| AggregateAttribute { aggregate }
+//    ));
+//}
+//
+//impl Synom for EventTypeVersionAttribute {
+//    named!(parse -> Self, map!(
+//        parens!(syn!(Ident)),
+//        |(_, event_type_version) | EventTypeVersionAttribute { event_type_version }
+//    ));
+//}
+
+fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream {
     let name = &ast.ident;
     let variants = &data_enum.variants;
     let (impl_generics, _ty_generics, where_clause) = ast.generics.split_for_impl();
@@ -130,7 +150,7 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> Tokens {
 fn generate_event_matches(
     name: &Ident,
     variants: &Punctuated<Variant, Comma>,
-) -> Vec<quote::Tokens> {
+) -> Vec<quote::ToTokens> {
     let mut result = Vec::new();
     for (_idx, variant) in variants.iter().enumerate() {
         let id = &variant.ident;
@@ -163,7 +183,7 @@ fn event_type_name(name: &Ident, variant_id: &Ident) -> String {
     format!("{}.{}", name_s, variant_s)
 }
 
-fn impl_component(ast: &DeriveInput) -> Tokens {
+fn impl_component(ast: &DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let (impl_generics, _ty_generics, where_clause) = ast.generics.split_for_impl();
 
@@ -187,7 +207,7 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
             type State = <#aggregate as Aggregate>::State;
             type Services = <#aggregate as Aggregate>::Services;
 
-            async fn dispatch(
+            r#async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
                 svc: &Self::Services,
@@ -201,4 +221,5 @@ fn impl_component(ast: &DeriveInput) -> Tokens {
             }
         }
     }
+    .into()
 }
