@@ -20,22 +20,24 @@ use syn::{Data, DataEnum, DeriveInput, Fields, Ident, LitStr, Path, Variant};
 /// Derives the boilerplate code for a Dispatcher
 #[proc_macro_derive(Dispatcher, attributes(aggregate))]
 pub fn component(input: TokenStream) -> TokenStream {
-    let ast = syn::parse(input).unwrap();
+    let ast = syn::parse(input).expect("Dispatcher entry failed!");
     impl_component(&ast)
 }
 
 /// Derives the boilerplate code for an Event
 #[proc_macro_derive(Event, attributes(event_type_version, event_source))]
 pub fn component_event(input: TokenStream) -> TokenStream {
-    let ast: DeriveInput = syn::parse(input).unwrap();
+    let ast: DeriveInput = syn::parse(input).expect("simple parse has failed!");
     let gen = match ast.data {
         Data::Enum(ref data_enum) => impl_component_event(&ast, data_enum),
         Data::Struct(_) => quote! {
             panic!("#[derive(Event)] is only defined for enums, not structs")
-        },
+        }
+        .into(),
         Data::Union(_) => quote! {
             panic!("#[derive(Event)] is only defined for enums, not unions")
-        },
+        }
+        .into(),
     };
 
     gen.into()
@@ -55,7 +57,6 @@ struct AggregateAttribute {
 
 impl Parse for EventSourceAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
-        let content;
         Ok(EventSourceAttribute {
             event_source: input.parse()?,
         })
@@ -64,7 +65,6 @@ impl Parse for EventSourceAttribute {
 
 impl Parse for EventTypeVersionAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
-        let content;
         Ok(EventTypeVersionAttribute {
             event_type_version: input.parse()?,
         })
@@ -73,26 +73,11 @@ impl Parse for EventTypeVersionAttribute {
 
 impl Parse for AggregateAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
-        let content;
         Ok(AggregateAttribute {
             aggregate: input.parse()?,
         })
     }
 }
-
-//impl Synom for AggregateAttribute {
-//    named!(parse -> Self, map!(
-//        parens!(syn!(Path)),
-//        |(_, aggregate)| AggregateAttribute { aggregate }
-//    ));
-//}
-//
-//impl Synom for EventTypeVersionAttribute {
-//    named!(parse -> Self, map!(
-//        parens!(syn!(Ident)),
-//        |(_, event_type_version) | EventTypeVersionAttribute { event_type_version }
-//    ));
-//}
 
 fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream {
     let name = &ast.ident;
@@ -103,7 +88,7 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
         .iter()
         .find(|attr| attr.path.segments[0].ident == "event_type_version")
         .map(|attr| {
-            syn::parse2::<EventTypeVersionAttribute>(attr.tts.clone())
+            syn::parse2::<EventTypeVersionAttribute>(attr.tokens.clone())
                 .unwrap()
                 .event_type_version
         })
@@ -114,15 +99,16 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
         .iter()
         .find(|attr| attr.path.segments[0].ident == "event_source")
         .map(|attr| {
-            syn::parse2::<EventSourceAttribute>(attr.tts.clone())
+            syn::parse2::<EventSourceAttribute>(attr.tokens.clone())
                 .unwrap()
                 .event_source
         })
         .unwrap_or_else(|| parse_quote!(NoEventSource));
 
-    let event_matches = generate_event_matches(&name, &variants);
+    //let input = generate_event_matches(&name, &variants);
+    //let event_matches = syn::parse_macro_input!(input as DeriveInput);
 
-    quote! {
+    let ex = quote! {
         impl #impl_generics ::eventsourcing::Event for #name #where_clause {
             fn event_type_version(&self) -> &str {
                 #event_type_version
@@ -133,9 +119,10 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
             }
 
             fn event_type(&self) -> &str {
-                match self {
-                    #(#event_matches)*
-                }
+                //match self {
+                //    #event_matches
+                //    //#(#event_matches)*
+                //}
             }
         }
         #[cfg(feature = "orgeventstore")]
@@ -144,37 +131,45 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
                 ::serde_json::from_str(&::serde_json::to_string(&__source.data).unwrap()).unwrap()
             }
         }
-    }
+    };
+
+    TokenStream::from(ex)
 }
 
-fn generate_event_matches(
-    name: &Ident,
-    variants: &Punctuated<Variant, Comma>,
-) -> Vec<quote::ToTokens> {
-    let mut result = Vec::new();
-    for (_idx, variant) in variants.iter().enumerate() {
-        let id = &variant.ident;
-        let et_name = event_type_name(name, id);
-        let new = match variant.fields {
-            Fields::Unit => quote! {
-                #name::#id => #et_name,
-            },
-            Fields::Unnamed(ref fields) => {
-                let idents: Vec<_> = fields.unnamed.pairs().map(|p| p.value().ident).collect();
-                quote! {
-                    #name::#id( #(_#idents,)* ) => #et_name,
+fn generate_event_matches(name: &Ident, variants: &Punctuated<Variant, Comma>) -> TokenStream {
+    variants
+        .iter()
+        .map(|variant| {
+            let id = &variant.ident;
+            let et_name = event_type_name(name, id);
+            match variant.fields {
+                Fields::Unit => quote! {
+                    #name::#id => #et_name,
+                },
+                Fields::Unnamed(ref fields) => {
+                    let idents: Vec<_> = fields
+                        .unnamed
+                        .pairs()
+                        .map(|p| p.value().ident.as_ref())
+                        .collect();
+                    quote! {
+                        #name::#id( #(_#idents,)* ) => #et_name,
+                    }
+                }
+                Fields::Named(ref fields) => {
+                    let idents: Vec<_> = fields
+                        .named
+                        .pairs()
+                        .map(|p| p.value().ident.as_ref())
+                        .collect();
+                    quote! {
+                        #name::#id { #(#idents: _,)* } => #et_name,
+                    }
                 }
             }
-            Fields::Named(ref fields) => {
-                let idents: Vec<_> = fields.named.pairs().map(|p| p.value().ident).collect();
-                quote! {
-                    #name::#id { #(#idents: _,)* } => #et_name,
-                }
-            }
-        };
-        result.push(new);
-    }
-    result
+        })
+        .map(|x| TokenStream::from(x))
+        .collect()
 }
 
 fn event_type_name(name: &Ident, variant_id: &Ident) -> String {
@@ -192,7 +187,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
         .iter()
         .find(|attr| attr.path.segments[0].ident == "aggregate")
         .map(|attr| {
-            syn::parse2::<AggregateAttribute>(attr.tts.clone())
+            syn::parse2::<AggregateAttribute>(attr.tokens.clone())
                 .unwrap()
                 .aggregate
         })
