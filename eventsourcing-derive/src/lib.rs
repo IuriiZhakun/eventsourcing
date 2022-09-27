@@ -160,7 +160,7 @@ fn generate_event_matches(
                         .map(|p| p.value().ident.as_ref())
                         .collect();
                     quote! {
-                        #name::#id( #(_#idents,)* ) => #et_name,
+                        #name::#id( #(_ #idents,)* ) => #et_name,
                     }
                 }
                 Fields::Named(ref fields) => {

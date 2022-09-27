@@ -75,7 +75,7 @@ impl Aggregate for TestAgg {
 }
 
 #[derive(Dispatcher)]
-#[aggregate(Combat)]
+#[aggregate(TestAgg)]
 struct TestDispatcher;
 
 use tokio;
