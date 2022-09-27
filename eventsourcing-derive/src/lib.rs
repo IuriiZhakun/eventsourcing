@@ -9,11 +9,7 @@ extern crate quote;
 extern crate syn;
 
 use proc_macro::TokenStream;
-use proc_macro2::Group;
 use quote::quote;
-use syn::parse::Parse;
-use syn::parse::ParseStream;
-use syn::parse::Result;
 use syn::parse_macro_input;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
@@ -199,7 +195,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
         .map(|attr| attr.parse_args().unwrap())
         .unwrap_or_else(|| parse_quote!(NoAggregate));
 
-    quote! {
+    let r = quote! {
         #[async_trait]
         impl #impl_generics ::eventsourcing::Dispatcher for #name #where_clause {
             type Aggregate = #aggregate;
@@ -208,7 +204,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
             type State = <#aggregate as Aggregate>::State;
             type Services = <#aggregate as Aggregate>::Services;
 
-            r#async fn dispatch(
+            async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
                 svc: &Self::Services,
@@ -222,5 +218,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
             }
         }
     }
-    .into()
+    .into();
+    eprintln!("dispatcher {:#?}", r);
+    r
 }
