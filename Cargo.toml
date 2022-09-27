@@ -10,7 +10,7 @@ categories = ["asynchronous","data-structures","rust-patterns","simulation"]
 readme = "README.md"
 license = "Apache-2.0"
 homepage = "https://github.com/pholactery/eventsourcing"
-edition = "2015"
+edition = "2018"
 
 [dependencies]
 async-trait = "0.1.57"
