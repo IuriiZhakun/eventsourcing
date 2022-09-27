@@ -6,7 +6,7 @@ use super::super::{Error, Event, Kind, Result};
 #[cfg(feature = "orgeventstore")]
 use super::EventStoreClient;
 use eventstore::{Client, ClientSettings, EventData, WriteResult};
-use serde::{Deserialize, Serialize};
+
 
 /// Client for the eventstoredb Event Store
 #[derive(Clone)]
