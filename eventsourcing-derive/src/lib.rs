@@ -204,7 +204,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
             type State = <#aggregate as Aggregate>::State;
             type Services = <#aggregate as Aggregate>::Services;
 
-            async fn dispatch(
+            r#async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
                 svc: &Self::Services,
