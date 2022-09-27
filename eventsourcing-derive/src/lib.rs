@@ -196,7 +196,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
         .unwrap_or_else(|| parse_quote!(NoAggregate));
 
     let r = quote! {
-        #[async_trait]
+        #[async_trait::async_trait]
         impl #impl_generics ::eventsourcing::Dispatcher for #name #where_clause {
             type Aggregate = #aggregate;
             type Event = <#aggregate as Aggregate>::Event;
@@ -204,7 +204,8 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
             type State = <#aggregate as Aggregate>::State;
             type Services = <#aggregate as Aggregate>::Services;
 
-            r#async fn dispatch(
+            async fn dispatch(
+            //r#async fn dispatch(
                 state: &Self::State,
                 cmd: &Self::Command,
                 svc: &Self::Services,
