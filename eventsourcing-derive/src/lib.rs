@@ -4,14 +4,17 @@
 #![recursion_limit = "128"]
 
 extern crate proc_macro;
+extern crate proc_macro2;
 extern crate quote;
 extern crate syn;
 
 use proc_macro::TokenStream;
+use proc_macro2::Group;
 use quote::quote;
 use syn::parse::Parse;
 use syn::parse::ParseStream;
 use syn::parse::Result;
+use syn::parse_macro_input;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
@@ -24,10 +27,61 @@ pub fn component(input: TokenStream) -> TokenStream {
     impl_component(&ast)
 }
 
+#[proc_macro_derive(MyEvent, attributes(event_type_version, event_source))]
+pub fn my_event(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    eprintln!("INPUT: {:#?}", ast);
+    let (impl_generics, _ty_generics, where_clause) = ast.generics.split_for_impl();
+    let gen = match ast.data {
+        Data::Enum(ref data_enum) => {
+            let name = &ast.ident;
+            let event_type_version: Ident = ast
+                .attrs
+                .iter()
+                .find(|attr| attr.path.segments[0].ident == "event_type_version")
+                .map(|attr| attr.parse_args().unwrap())
+                .unwrap_or_else(|| parse_quote!(NoSchemaVersion));
+
+            let event_source: LitStr = ast
+                .attrs
+                .iter()
+                .find(|attr| attr.path.segments[0].ident == "event_source")
+                .map(|attr| attr.parse_args().unwrap())
+                .unwrap_or_else(|| parse_quote!(NoEventSource));
+
+            let variants = &data_enum.variants;
+
+            let event_matches = generate_event_matches(&name, &variants);
+
+            quote! {
+              impl #impl_generics ::eventsourcing::Event for #name #where_clause {
+                fn event_type_version(&self) -> &str { #event_type_version }
+
+                fn event_type(&self) -> &str {
+                    match self {
+                        #(#event_matches)*
+                    }
+                }
+                fn event_source(&self) -> &str { #event_source }
+              }
+            }
+        }
+        Data::Struct(_) => quote! {
+            panic!("#[derive(Event)] is only defined for enums, not structs")
+        },
+        Data::Union(_) => quote! {
+            panic!("#[derive(Event)] is only defined for enums, not unions")
+        },
+    };
+
+    gen.into()
+}
+
 /// Derives the boilerplate code for an Event
 #[proc_macro_derive(Event, attributes(event_type_version, event_source))]
 pub fn component_event(input: TokenStream) -> TokenStream {
-    let ast: DeriveInput = syn::parse(input).expect("simple parse has failed!");
+    let ast = parse_macro_input!(input as DeriveInput);
+    //let ast: DeriveInput = syn::parse(input).expect("event parse has failed!");
     let gen = match ast.data {
         Data::Enum(ref data_enum) => impl_component_event(&ast, data_enum),
         Data::Struct(_) => quote! {
@@ -43,70 +97,25 @@ pub fn component_event(input: TokenStream) -> TokenStream {
     gen.into()
 }
 
-struct EventSourceAttribute {
-    event_source: LitStr,
-}
-
-struct EventTypeVersionAttribute {
-    event_type_version: Ident,
-}
-
-struct AggregateAttribute {
-    aggregate: Path,
-}
-
-impl Parse for EventSourceAttribute {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(EventSourceAttribute {
-            event_source: input.parse()?,
-        })
-    }
-}
-
-impl Parse for EventTypeVersionAttribute {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(EventTypeVersionAttribute {
-            event_type_version: input.parse()?,
-        })
-    }
-}
-
-impl Parse for AggregateAttribute {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(AggregateAttribute {
-            aggregate: input.parse()?,
-        })
-    }
-}
-
 fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream {
-    let name = &ast.ident;
     let variants = &data_enum.variants;
     let (impl_generics, _ty_generics, where_clause) = ast.generics.split_for_impl();
-    let event_type_version = ast
+    let name = &ast.ident;
+    let event_type_version: Ident = ast
         .attrs
         .iter()
         .find(|attr| attr.path.segments[0].ident == "event_type_version")
-        .map(|attr| {
-            syn::parse2::<EventTypeVersionAttribute>(attr.tokens.clone())
-                .unwrap()
-                .event_type_version
-        })
+        .map(|attr| attr.parse_args().unwrap())
         .unwrap_or_else(|| parse_quote!(NoSchemaVersion));
 
-    let event_source = ast
+    let event_source: LitStr = ast
         .attrs
         .iter()
         .find(|attr| attr.path.segments[0].ident == "event_source")
-        .map(|attr| {
-            syn::parse2::<EventSourceAttribute>(attr.tokens.clone())
-                .unwrap()
-                .event_source
-        })
+        .map(|attr| attr.parse_args().unwrap())
         .unwrap_or_else(|| parse_quote!(NoEventSource));
 
-    //let input = generate_event_matches(&name, &variants);
-    //let event_matches = syn::parse_macro_input!(input as DeriveInput);
+    let event_matches = generate_event_matches(&name, &variants);
 
     let ex = quote! {
         impl #impl_generics ::eventsourcing::Event for #name #where_clause {
@@ -119,10 +128,9 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
             }
 
             fn event_type(&self) -> &str {
-                //match self {
-                //    #event_matches
-                //    //#(#event_matches)*
-                //}
+                match self {
+                    #(#event_matches)*
+                }
             }
         }
         #[cfg(feature = "orgeventstore")]
@@ -136,7 +144,10 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
     TokenStream::from(ex)
 }
 
-fn generate_event_matches(name: &Ident, variants: &Punctuated<Variant, Comma>) -> TokenStream {
+fn generate_event_matches(
+    name: &Ident,
+    variants: &Punctuated<Variant, Comma>,
+) -> Vec<proc_macro2::TokenStream> {
     variants
         .iter()
         .map(|variant| {
@@ -168,7 +179,6 @@ fn generate_event_matches(name: &Ident, variants: &Punctuated<Variant, Comma>) -
                 }
             }
         })
-        .map(|x| TokenStream::from(x))
         .collect()
 }
 
@@ -182,15 +192,11 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let (impl_generics, _ty_generics, where_clause) = ast.generics.split_for_impl();
 
-    let aggregate = ast
+    let aggregate: Path = ast
         .attrs
         .iter()
         .find(|attr| attr.path.segments[0].ident == "aggregate")
-        .map(|attr| {
-            syn::parse2::<AggregateAttribute>(attr.tokens.clone())
-                .unwrap()
-                .aggregate
-        })
+        .map(|attr| attr.parse_args().unwrap())
         .unwrap_or_else(|| parse_quote!(NoAggregate));
 
     quote! {

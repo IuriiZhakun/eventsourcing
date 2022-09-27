@@ -11,8 +11,9 @@ license = "MPL-2.0"
 homepage = "https://github.com/pholactery/eventsourcing"
 
 [dependencies]
-syn = "1.0"
+syn = { version="1.0", features = ["extra-traits"] }
 quote = "1.0"
+proc-macro2 = "1.0.44"
 
 [lib]
 proc-macro = true

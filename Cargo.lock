@@ -173,6 +173,7 @@ dependencies = [
 name = "eventsourcing-derive"
 version = "0.1.4"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn",
 ]
