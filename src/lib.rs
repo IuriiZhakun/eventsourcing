@@ -117,13 +117,10 @@ extern crate serde_derive;
 extern crate serde_json;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-#[cfg(feature = "eventstore")]
 extern crate uuid;
 
-#[cfg(feature = "eventstore")]
 pub use cloudevents::CloudEvent;
 
-#[cfg(feature = "eventstore")]
 use crate::eventstore::EventStoreClient;
 use serde::Serialize;
 use std::fmt;
@@ -194,14 +191,9 @@ pub trait Aggregate: Default + Serialize + DeserializeOwned + Send + Sync {
     type Event: Event;
     type Command;
     type State: AggregateState + Clone;
-    type Services: Send + Sync;
 
     fn apply_event(state: &Self::State, evt: &Self::Event) -> Result<Self::State>;
-    async fn handle_command(
-        state: &Self::State,
-        cmd: &Self::Command,
-        service: &Self::Services,
-    ) -> Result<Vec<Self::Event>>;
+    fn handle_command(state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>>;
     fn apply_all(state: &Self::State, evts: &[Self::Event]) -> Result<Self::State> {
         Ok(evts.iter().fold(state.clone(), |acc_state, event| {
             Self::apply_event(&acc_state, event).unwrap()
@@ -215,30 +207,21 @@ pub trait Aggregate: Default + Serialize + DeserializeOwned + Send + Sync {
 /// yourself, you can use a derive macro to make a placeholder struct your dispatcher.
 /// The result of a dispatch is a vector capturing the success of command application. If it
 /// succeeded, you will get a CloudEvent, a CloudEvents v0.1 spec-compliant data structure.
-#[cfg(feature = "orgeventstore")]
 #[async_trait]
 pub trait Dispatcher {
     type Command;
     type Event: Event;
     type State: AggregateState + Clone;
-    type Services: Send + Sync;
-    type Aggregate: Aggregate<
-        Event = Self::Event,
-        Command = Self::Command,
-        State = Self::State,
-        Services = Self::Services,
-    >;
+    type Aggregate: Aggregate<Event = Self::Event, Command = Self::Command, State = Self::State>;
 
     async fn dispatch(
         state: Self::State,
         cmd: Self::Command,
-        svc: Self::Services,
         store: impl EventStoreClient,
         stream: String,
     ) -> Vec<Result<CloudEvent>>;
 }
 
-#[cfg(feature = "eventstore")]
 pub mod cloudevents;
 
 pub mod eventstore;

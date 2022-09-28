@@ -35,22 +35,16 @@ pub struct Combat;
 
 pub struct CombatServices;
 
-#[async_trait]
 impl Aggregate for Combat {
     type Event = CombatEvent;
     type Command = CombatCommand;
     type State = CombatState;
-    type Services = CombatServices;
 
     fn apply_event(_state: &Self::State, _evt: &Self::Event) -> Result<Self::State> {
         unimplemented!()
     }
 
-    async fn handle_command(
-        _state: &Self::State,
-        cmd: &Self::Command,
-        _svc: &Self::Services,
-    ) -> Result<Vec<Self::Event>> {
+    fn handle_command(_state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>> {
         println!("Command handled: {:#?}", cmd);
         // SHOULD DO: validate state and command
         let evt = match *cmd {

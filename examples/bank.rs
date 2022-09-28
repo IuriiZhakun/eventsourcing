@@ -6,8 +6,6 @@ extern crate serde_json;
 #[macro_use]
 extern crate eventsourcing_derive;
 
-use async_trait::async_trait;
-
 use eventsourcing::{eventstore::MemoryEventStore, prelude::*, Result};
 
 const DOMAIN_VERSION: &str = "1.0";
@@ -41,14 +39,10 @@ impl AggregateState for AccountData {
 #[derive(Serialize, Deserialize, Default)]
 struct Account;
 
-struct AccountServices;
-
-#[async_trait]
 impl Aggregate for Account {
     type Event = BankEvent;
     type State = AccountData;
     type Command = BankCommand;
-    type Services = AccountServices;
 
     fn apply_event(state: &Self::State, evt: &Self::Event) -> Result<Self::State> {
         let state = match *evt {
@@ -66,11 +60,7 @@ impl Aggregate for Account {
         Ok(state)
     }
 
-    async fn handle_command(
-        _state: &Self::State,
-        cmd: &Self::Command,
-        _svc: &Self::Services,
-    ) -> Result<Vec<Self::Event>> {
+    fn handle_command(_state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>> {
         // SHOULD DO: validate state and command
 
         // if validation passes...
@@ -86,8 +76,7 @@ impl Aggregate for Account {
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let _account_store = MemoryEventStore::new();
 
     let deposit = BankCommand::DepositFunds("SAVINGS100".to_string(), 500);
@@ -97,11 +86,7 @@ async fn main() {
         acctnum: "SAVINGS100".to_string(),
         generation: 1,
     };
-    let svc = AccountServices {};
-
-    let post_deposit = Account::handle_command(&initial_state, &deposit, &svc)
-        .await
-        .unwrap();
+    let post_deposit = Account::handle_command(&initial_state, &deposit).unwrap();
     let state = Account::apply_event(&initial_state, &post_deposit[0]).unwrap();
 
     println!("{:#?}", post_deposit);

@@ -34,8 +34,6 @@ impl AggregateState for TestState {
 #[derive(Serialize, Deserialize, Default)]
 pub struct TestAgg;
 
-pub struct TestServices;
-
 #[derive(Debug)]
 pub enum TestCommand {
     Hello(String),
@@ -48,17 +46,12 @@ impl Aggregate for TestAgg {
     type Event = TestEvent;
     type Command = TestCommand;
     type State = TestState;
-    type Services = TestServices;
 
     fn apply_event(_state: &Self::State, _evt: &Self::Event) -> Result<Self::State> {
         unimplemented!()
     }
 
-    async fn handle_command(
-        _state: &Self::State,
-        cmd: &Self::Command,
-        _svc: &Self::Services,
-    ) -> Result<Vec<Self::Event>> {
+    fn handle_command(_state: &Self::State, cmd: &Self::Command) -> Result<Vec<Self::Event>> {
         println!("Command handled: {:#?}", cmd);
         // SHOULD DO: validate state and command
         let evt = match *cmd {

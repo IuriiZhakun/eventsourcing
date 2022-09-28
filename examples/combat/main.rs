@@ -28,9 +28,6 @@ async fn main() {
     println!("{}", rando.event_type());
     let unit = CombatEvent::UnitEvent;
     println!("{}", unit.event_type());
-    let svc = CombatServices {};
-    let res = CombatDispatcher::dispatch(&state, &swing, &svc, &combat_store, "ogre")
-        .await
-        .unwrap();
+    let res = CombatDispatcher::dispatch(&state, &swing, &combat_store, "ogre").await;
     println!("dispatch results - {:#?}", res);
 }
