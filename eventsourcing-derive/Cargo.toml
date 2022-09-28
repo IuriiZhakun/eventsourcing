@@ -15,6 +15,7 @@ edition = "2021"
 syn = { version="1.0", features = ["extra-traits"] }
 quote = "1.0"
 proc-macro2 = "1.0.44"
+futures = {version = "0.3"}
 
 [lib]
 proc-macro = true

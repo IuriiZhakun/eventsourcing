@@ -161,6 +161,7 @@ dependencies = [
  "chrono",
  "eventsourcing-derive",
  "eventstore",
+ "futures",
  "reqwest",
  "serde",
  "serde_derive",
@@ -173,6 +174,7 @@ dependencies = [
 name = "eventsourcing-derive"
 version = "0.1.4"
 dependencies = [
+ "futures",
  "proc-macro2",
  "quote",
  "syn",

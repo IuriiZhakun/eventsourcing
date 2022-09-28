@@ -16,7 +16,7 @@ const DOMAIN_VERSION: &str = "1.0";
 //#[derive(MyEvent)]
 #[event_type_version(DOMAIN_VERSION)]
 #[event_source("events://github.com/pholactery/eventsourcing/tests/integration")]
-enum TestEvent {
+pub enum TestEvent {
     Sample { val1: u32, val2: u32, val3: String },
 }
 
@@ -77,6 +77,47 @@ impl Aggregate for TestAgg {
 #[derive(Dispatcher)]
 #[aggregate(TestAgg)]
 struct TestDispatcher;
+
+//use futures::future::join_all;
+//
+//#[async_trait]
+//impl ::eventsourcing::Dispatcher for TestDispatcher {
+//    type Aggregate = TestAgg;
+//    type Event = <TestAgg as Aggregate>::Event;
+//    type Command = <TestAgg as Aggregate>::Command;
+//    type State = <TestAgg as Aggregate>::State;
+//    type Services = <TestAgg as Aggregate>::Services;
+//    #[allow(
+//        clippy::let_unit_value,
+//        clippy::no_effect_underscore_binding,
+//        clippy::shadow_same,
+//        clippy::type_complexity,
+//        clippy::type_repetition_in_bounds,
+//        clippy::used_underscore_binding
+//    )]
+//    async fn dispatch(
+//        state: Self::State,
+//        cmd: Self::Command,
+//        svc: Self::Services,
+//        store: impl ::eventsourcing::eventstore::EventStoreClient,
+//        stream: String,
+//    ) -> Vec<Result<::eventsourcing::cloudevents::CloudEvent>> {
+//        let __ret: Vec<Result<::eventsourcing::cloudevents::CloudEvent>> = {
+//            match Self::Aggregate::handle_command(&state, &cmd, &svc).await {
+//                Ok(evts) => {
+//                    join_all(
+//                        evts.into_iter()
+//                            .map(|evt| store.append(evt, &stream))
+//                            .collect::<Vec<_>>(),
+//                    )
+//                    .await
+//                }
+//                Err(e) => vec![Err(e)],
+//            }
+//        };
+//        __ret
+//    }
+//}
 
 use tokio;
 

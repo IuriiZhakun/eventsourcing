@@ -22,6 +22,7 @@ uuid =  { version = "0.8.1", features = ["v4"], optional = true }
 reqwest = { version = "0.11.11", features = ["json", "blocking"], optional = true }
 eventstore = { version = "2.1.1" } 
 tokio = {version = "1.21.0" }
+futures = {version = "0.3"}
 
 [features]
 default = ["eventstore","orgeventstore"]

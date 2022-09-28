@@ -190,7 +190,7 @@ pub trait AggregateState {
 ///
 /// Both of these functions are stateless, as aggregates should also be stateless.
 #[async_trait]
-pub trait Aggregate: Default + Serialize + DeserializeOwned + Sync + Send {
+pub trait Aggregate: Default + Serialize + DeserializeOwned + Send + Sync {
     type Event: Event;
     type Command;
     type State: AggregateState + Clone;
@@ -230,11 +230,11 @@ pub trait Dispatcher {
     >;
 
     async fn dispatch(
-        state: &Self::State,
-        cmd: &Self::Command,
-        svc: &Self::Services,
-        store: &impl EventStoreClient,
-        stream: &str,
+        state: Self::State,
+        cmd: Self::Command,
+        svc: Self::Services,
+        store: impl EventStoreClient,
+        stream: String,
     ) -> Vec<Result<CloudEvent>>;
 }
 

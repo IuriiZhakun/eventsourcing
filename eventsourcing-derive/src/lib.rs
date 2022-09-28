@@ -8,6 +8,8 @@ extern crate proc_macro2;
 extern crate quote;
 extern crate syn;
 
+//use futures::future::join_all;
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse_macro_input;
@@ -196,7 +198,7 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
         .unwrap_or_else(|| parse_quote!(NoAggregate));
 
     let r = quote! {
-        #[async_trait::async_trait]
+        #[async_trait]
         impl #impl_generics ::eventsourcing::Dispatcher for #name #where_clause {
             type Aggregate = #aggregate;
             type Event = <#aggregate as Aggregate>::Event;
@@ -205,15 +207,22 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
             type Services = <#aggregate as Aggregate>::Services;
 
             async fn dispatch(
-            //r#async fn dispatch(
-                state: &Self::State,
-                cmd: &Self::Command,
-                svc: &Self::Services,
-                store: &impl ::eventsourcing::eventstore::EventStoreClient,
-                stream: &str,
+
+        state: Self::State,
+        cmd: Self::Command,
+        svc: Self::Services,
+        store: impl crate::eventsourcing::prelude::EventStoreClient,
+        stream: String,
             ) -> Vec<Result<::eventsourcing::cloudevents::CloudEvent>> {
-                match Self::Aggregate::handle_command(state, cmd, svc) {
-                    Ok(evts) => evts.into_iter().map(|evt| store.append(evt, stream)).collect(),
+                match Self::Aggregate::handle_command(&state, &cmd, &svc).await {
+
+                    Ok(evts) => {
+                      futures::future::join_all(
+                          evts.into_iter()
+                              .map(|evt| store.append(evt, &stream))
+                              .collect::<Vec<_>>(),
+                      ).await
+                    },
                     Err(e) => vec![Err(e)],
                 }
             }
