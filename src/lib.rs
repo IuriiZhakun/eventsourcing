@@ -120,8 +120,11 @@ use serde::de::DeserializeOwned;
 extern crate uuid;
 
 pub use cloudevents::CloudEvent;
+use std::collections::HashMap;
+use uuid::Uuid;
 
 use crate::eventstore::EventStoreClient;
+use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
 
@@ -159,14 +162,63 @@ pub enum Kind {
     StoreFailure(String),
 }
 
+pub type EventMeta = HashMap<String, String>;
+
 /// A Result where failure is an event sourcing error
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct LID {
+    pub id: Uuid,
+    pub links: Vec<Uuid>,
+}
+
+impl LID {
+    pub fn new() -> Self {
+        LID {
+            id: Uuid::new_v4(),
+            links: Vec::new(),
+        }
+    }
+    pub fn create(id: Uuid) -> Self {
+        LID {
+            id,
+            links: Vec::new(),
+        }
+    }
+    pub fn from(id: &Uuid) -> Self {
+        LID {
+            id: Uuid::new_v4(),
+            links: vec![id.clone()],
+        }
+    }
+    pub fn next(&self) -> Self {
+        LID::from(&self.id)
+    }
+}
+
+impl From<LID> for EventMeta {
+    fn from(lid: LID) -> Self {
+        HashMap::from([
+            ("uid".to_string(), lid.id.to_string()),
+            (
+                "links".to_string(),
+                lid.links
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(","),
+            ),
+        ])
+    }
+}
+
 /// All events must be serializable, and they need to expose some basic metadata
 /// about the event, including the type name, the type version, and a source
-/// to be used when events are emitted. If you use the derive macro fror events,
+/// to be used when events are emitted. If you use the derive macro for events,
 /// you do not have to implement these functions manually.
-pub trait Event: Serialize + Send {
+pub trait Event: Serialize + DeserializeOwned + Send + std::fmt::Debug {
+    //pub trait Event: Serialize + Deserialize<'_> + Send + std::fmt::Debug {
     fn event_type_version(&self) -> &str;
     fn event_type(&self) -> &str;
     fn event_source(&self) -> &str;
@@ -199,7 +251,33 @@ pub trait Aggregate: Default + Serialize + DeserializeOwned + Send + Sync {
             Self::apply_event(&acc_state, event).unwrap()
         }))
     }
+    fn wrap_events(events: Vec<Self::Event>, lid: LID) -> EventEnvelope<Self::Event> {
+        EventEnvelope {
+            payload: events,
+            lid,
+            metadata: HashMap::default(),
+        }
+    }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EventEnvelope<Event> {
+    /// The event payload with all business information.
+    pub payload: Vec<Event>,
+    pub lid: LID,
+    /// Additional metadata for use in auditing, logging or debugging purposes.
+    pub metadata: HashMap<String, String>,
+}
+
+//impl<A: Aggregate> Clone for EventEnvelope<A> {
+//    fn clone(&self) -> Self {
+//        EventEnvelope {
+//            payload: self.payload.clone(),
+//            lid: self.lid.clone(),
+//            metadata: self.metadata.clone(),
+//        }
+//    }
+//}
 
 /// A dispatcher is a type of pipeline glue that eliminates a certain set of boilerplate
 /// code for when you want to emit the events produced through the application of a command
@@ -219,6 +297,7 @@ pub trait Dispatcher {
         cmd: Self::Command,
         store: impl EventStoreClient,
         stream: String,
+        evt_meta: EventMeta,
     ) -> Vec<Result<CloudEvent>>;
 }
 

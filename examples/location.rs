@@ -91,7 +91,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Second, apply the events to get a new state
     let state = Location::apply_all(&old_state, &res)?;
     // Third, append to store (can do this alternatively with a dispatcher)
-    let store_result = location_store.append(res[0].clone(), "locations").await?;
+    let store_result = location_store
+        .append(res[0].clone(), "locations", EventMeta::default())
+        .await?;
     println!("Store result: {:?}", store_result);
 
     println!("Original state: {:?}", old_state);

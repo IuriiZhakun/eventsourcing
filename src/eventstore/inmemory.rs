@@ -7,6 +7,8 @@
 #[cfg(feature = "eventstore")]
 use super::super::cloudevents::CloudEvent;
 use super::super::Event;
+use super::super::EventEnvelope;
+use super::super::EventMeta;
 use super::super::Result;
 #[cfg(feature = "eventstore")]
 use super::EventStoreClient;
@@ -32,8 +34,21 @@ use async_trait::async_trait;
 //#[async_trait(?Send)]
 #[async_trait]
 impl EventStoreClient for MemoryEventStore {
+    async fn append_envelope<E: Event>(
+        &self,
+        evt: EventEnvelope<E>,
+        _stream: &str,
+    ) -> Result<EventEnvelope<E>> {
+        Ok(evt)
+    }
+
     /// Appends an event to the in-memory store
-    async fn append(&self, evt: impl Event, _stream: &str) -> Result<CloudEvent> {
+    async fn append(
+        &self,
+        evt: impl Event,
+        _stream: &str,
+        _evt_meta: EventMeta,
+    ) -> Result<CloudEvent> {
         let mut guard = self.evts.lock().unwrap();
         let cloud_event = CloudEvent::from(evt);
         guard.push(cloud_event.clone());
@@ -48,6 +63,13 @@ impl EventStoreClient for MemoryEventStore {
             .collect();
 
         Ok(matches)
+    }
+
+    async fn get_all_e<E: Event>(&self, _stream: &str) -> Result<Vec<E>> {
+        Ok(Vec::new())
+    }
+    async fn get_all_ee<E: Event>(&self, _stream: &str) -> Result<Vec<EventEnvelope<E>>> {
+        Ok(Vec::new())
     }
 }
 

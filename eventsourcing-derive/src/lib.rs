@@ -10,67 +10,45 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::parse::Parse;
+use syn::parse::ParseStream;
 use syn::parse_macro_input;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use syn::{Data, DataEnum, DeriveInput, Fields, Ident, LitStr, Path, Variant};
+use syn::ItemStruct;
+use syn::{parse, Data, DataEnum, DeriveInput, Fields, Ident, LitStr, Path, Result, Variant};
+
+struct Field {
+    field: syn::Field,
+}
+
+impl Parse for Field {
+    fn parse(input: ParseStream) -> Result<Self> {
+        input.parse()
+    }
+}
+
+#[proc_macro_attribute]
+pub fn event_meta(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    let mut item_struct = parse_macro_input!(item as ItemStruct);
+    let _ = parse_macro_input!(attrs as parse::Nothing);
+    if let syn::Fields::Named(ref mut fields) = item_struct.fields {
+        let ex: Field = syn::parse2(quote! { pub lid: LID, }).unwrap();
+        fields.named.push(ex.field);
+    };
+
+    return quote! {
+        #item_struct
+    }
+    .into();
+}
 
 /// Derives the boilerplate code for a Dispatcher
 #[proc_macro_derive(Dispatcher, attributes(aggregate))]
 pub fn component(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).expect("Dispatcher entry failed!");
     impl_component(&ast)
-}
-
-#[proc_macro_derive(MyEvent, attributes(event_type_version, event_source))]
-pub fn my_event(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input as DeriveInput);
-    eprintln!("INPUT: {:#?}", ast);
-    let (impl_generics, _ty_generics, where_clause) = ast.generics.split_for_impl();
-    let gen = match ast.data {
-        Data::Enum(ref data_enum) => {
-            let name = &ast.ident;
-            let event_type_version: Ident = ast
-                .attrs
-                .iter()
-                .find(|attr| attr.path.segments[0].ident == "event_type_version")
-                .map(|attr| attr.parse_args().unwrap())
-                .unwrap_or_else(|| parse_quote!(NoSchemaVersion));
-
-            let event_source: LitStr = ast
-                .attrs
-                .iter()
-                .find(|attr| attr.path.segments[0].ident == "event_source")
-                .map(|attr| attr.parse_args().unwrap())
-                .unwrap_or_else(|| parse_quote!(NoEventSource));
-
-            let variants = &data_enum.variants;
-
-            let event_matches = generate_event_matches(&name, &variants);
-
-            quote! {
-              impl #impl_generics ::eventsourcing::Event for #name #where_clause {
-                fn event_type_version(&self) -> &str { #event_type_version }
-
-                fn event_type(&self) -> &str {
-                    match self {
-                        #(#event_matches)*
-                    }
-                }
-                fn event_source(&self) -> &str { #event_source }
-              }
-            }
-        }
-        Data::Struct(_) => quote! {
-            panic!("#[derive(Event)] is only defined for enums, not structs")
-        },
-        Data::Union(_) => quote! {
-            panic!("#[derive(Event)] is only defined for enums, not unions")
-        },
-    };
-
-    gen.into()
 }
 
 /// Derives the boilerplate code for an Event
@@ -129,7 +107,6 @@ fn impl_component_event(ast: &DeriveInput, data_enum: &DataEnum) -> TokenStream 
                 }
             }
         }
-        #[cfg(feature = "orgeventstore")]
         impl From<::eventsourcing::cloudevents::CloudEvent> for #name {
             fn from(__source: ::eventsourcing::cloudevents::CloudEvent) -> Self {
                 ::serde_json::from_str(&::serde_json::to_string(&__source.data).unwrap()).unwrap()
@@ -208,14 +185,15 @@ fn impl_component(ast: &DeriveInput) -> TokenStream {
                cmd: Self::Command,
                store: impl crate::eventsourcing::prelude::EventStoreClient,
                stream: String,
+               evt_meta: EventMeta,
             ) -> Vec<Result<::eventsourcing::cloudevents::CloudEvent>> {
                 match Self::Aggregate::handle_command(&state, &cmd) {
                     Ok(evts) => {
-                      futures::future::join_all(
-                          evts.into_iter()
-                              .map(|evt| store.append(evt, &stream))
-                              .collect::<Vec<_>>(),
-                      ).await
+                        futures::future::join_all(
+                            evts.into_iter()
+                                .map(|evt| store.append(evt, &stream, evt_meta.clone()))
+                                .collect::<Vec<_>>(),
+                        ).await
                     },
                     Err(e) => vec![Err(e)],
                 }

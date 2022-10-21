@@ -5,14 +5,14 @@ extern crate eventsourcing;
 extern crate serde_json;
 #[macro_use]
 extern crate eventsourcing_derive;
-use eventsourcing::Event;
+use eventsourcing::EventMeta;
 use eventsourcing::{Aggregate, AggregateState, Dispatcher, Result};
 
 //use chrono::prelude::*;
 
 const DOMAIN_VERSION: &str = "1.0";
 
-#[derive(Debug, Serialize, Deserialize, Event)]
+#[derive(Debug, Serialize, Deserialize, Event, Clone)]
 //#[derive(MyEvent)]
 #[event_type_version(DOMAIN_VERSION)]
 #[event_source("events://github.com/pholactery/eventsourcing/tests/integration")]
