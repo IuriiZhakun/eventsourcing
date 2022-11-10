@@ -23,6 +23,8 @@ reqwest = { version = "0.11.11", features = ["json", "blocking"], optional = tru
 eventstore = { version = "2.1.1" } 
 tokio = {version = "1.21.0" }
 futures = {version = "0.3"}
+tracing = { version="0.1.37"}
+tracing-subscriber = { version="0.3.16"}
 
 [features]
 default = ["eventstore","orgeventstore"]

@@ -7,6 +7,7 @@ use super::super::{Error, Event, Kind, Result};
 use super::EventStoreClient;
 use eventstore::{Client, ClientSettings, EventData, WriteResult};
 use std::collections::HashMap;
+use tracing::info;
 use uuid::Uuid;
 
 /// Client for the eventstoredb Event Store
@@ -102,7 +103,7 @@ impl EventStoreClient for EventStoreDBClient {
                         },
                         Err(err) => match err {
                             eventstore::Error::ResourceNotFound => {
-                                println!("no events for {:?}", stream)
+                                info!("no events for {:?}", stream)
                             }
                             _ => {
                                 return Err(Error {
@@ -154,7 +155,7 @@ impl EventStoreClient for EventStoreDBClient {
                         },
                         Err(err) => match err {
                             eventstore::Error::ResourceNotFound => {
-                                println!("no events for {:?}", stream)
+                                info!("no events for {:?}", stream)
                             }
                             _ => {
                                 return Err(Error {
@@ -201,7 +202,7 @@ impl EventStoreClient for EventStoreDBClient {
                         },
                         Err(err) => match err {
                             eventstore::Error::ResourceNotFound => {
-                                println!("no events for {:?}", stream)
+                                info!("no events for {:?}", stream)
                             }
                             _ => {
                                 return Err(Error {
@@ -247,7 +248,7 @@ impl EventStoreClient for EventStoreDBClient {
                 next_expected_version: _,
                 position: _,
             }) => {
-                println!("wrote {:?} ", ce);
+                info!("wrote {:?} ", ce);
                 Ok(ce)
             }
             Err(kind) => Err(Error {
@@ -290,7 +291,7 @@ impl EventStoreClient for EventStoreDBClient {
                 next_expected_version: _,
                 position: _,
             }) => {
-                println!("wrote {:?} ", log_e);
+                info!("wrote {:?} ", log_e);
                 Ok(evt)
             }
             Err(kind) => Err(Error {
