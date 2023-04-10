@@ -3,11 +3,12 @@
 use crate::{EventEnvelope, EventMeta, LID};
 
 use super::super::cloudevents::CloudEvent;
-use super::super::{Error, Event, Kind, Result};
+use super::super::Result as EVResult;
+use super::super::{Error, Event, Kind};
 use super::EventStoreClient;
 use eventstore::{Client, ClientSettings, EventData, WriteResult};
 use std::collections::HashMap;
-use tracing::info;
+use tracing::{debug, info};
 use uuid::Uuid;
 
 /// Client for the eventstoredb Event Store
@@ -49,7 +50,7 @@ use async_trait::async_trait;
 #[async_trait]
 impl EventStoreClient for EventStoreDBClient {
     //TODO: fix dup
-    async fn get_all_ee<E: Event>(&self, stream: &str) -> Result<Vec<EventEnvelope<E>>> {
+    async fn get_all_ee<E: Event>(&self, stream: &str) -> EVResult<Vec<EventEnvelope<E>>> {
         let res = self.client.read_stream(stream, &Default::default()).await;
         match res {
             Ok(mut stream) => {
@@ -127,7 +128,7 @@ impl EventStoreClient for EventStoreDBClient {
         }
     }
 
-    async fn get_all_e<E: Event>(&self, stream: &str) -> Result<Vec<E>> {
+    async fn get_all_e<E: Event>(&self, stream: &str) -> EVResult<Vec<E>> {
         let res = self.client.read_stream(stream, &Default::default()).await;
         match res {
             Ok(mut stream) => {
@@ -179,7 +180,7 @@ impl EventStoreClient for EventStoreDBClient {
         }
     }
 
-    async fn get_all(&self, stream: &str) -> Result<Vec<CloudEvent>> {
+    async fn get_all(&self, stream: &str) -> EVResult<Vec<CloudEvent>> {
         let res = self.client.read_stream(stream, &Default::default()).await;
         match res {
             Ok(mut stream) => {
@@ -231,7 +232,7 @@ impl EventStoreClient for EventStoreDBClient {
         evt: impl Event,
         stream: &str,
         evt_meta: EventMeta,
-    ) -> Result<CloudEvent> {
+    ) -> EVResult<CloudEvent> {
         let ce: CloudEvent = evt.into();
 
         let e = EventData::json(ce.event_type.to_owned(), &ce)
@@ -248,7 +249,7 @@ impl EventStoreClient for EventStoreDBClient {
                 next_expected_version: _,
                 position: _,
             }) => {
-                info!("wrote {:?} ", ce);
+                debug!("wrote {:?} ", ce);
                 Ok(ce)
             }
             Err(kind) => Err(Error {
@@ -264,23 +265,26 @@ impl EventStoreClient for EventStoreDBClient {
         &self,
         evt: EventEnvelope<E>,
         stream: &str,
-    ) -> Result<EventEnvelope<E>> {
+    ) -> EVResult<EventEnvelope<E>> {
         let lid: HashMap<String, String> = evt.lid.clone().into();
         let mut meta = evt.metadata.clone();
         meta.extend(lid);
 
         //let raw_data = serde_json::to_string(&source).unwrap();
-        let e: Vec<EventData> = evt
+        let re: Result<Vec<_>, serde_json::Error> = evt
+            //let e: Vec<EventData> = evt
             .payload
             .iter()
             .map(|x| {
-                EventData::json(x.event_type().to_owned(), &x)
-                    .unwrap()
-                    .metadata_as_json(meta.clone())
-                    .unwrap()
+                let r = EventData::json(x.event_type().to_owned(), &x)
+                    .and_then(|e| e.metadata_as_json(meta.clone()));
+                r
             })
             .collect();
 
+        let e = re.map_err(|e| Error {
+            kind: Kind::StoreFailure(format!("Failed to parse {:?} error {:?}", evt, e,)),
+        })?;
         let log_e = e.clone();
         let res = self
             .client
@@ -291,7 +295,7 @@ impl EventStoreClient for EventStoreDBClient {
                 next_expected_version: _,
                 position: _,
             }) => {
-                info!("wrote {:?} ", log_e);
+                debug!("wrote {:?} ", log_e);
                 Ok(evt)
             }
             Err(kind) => Err(Error {

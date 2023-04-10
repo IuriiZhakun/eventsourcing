@@ -16,7 +16,7 @@ use eventsourcing::prelude::*;
 
 const DOMAIN_VERSION: &str = "1.0";
 
-#[derive(Serialize, Deserialize, Event)]
+#[derive(Debug, Serialize, Deserialize, Event)]
 #[event_type_version(DOMAIN_VERSION)]
 #[event_source("events://github.com/pholactery/eventsourcing/tests/integration")]
 enum TestEvent {

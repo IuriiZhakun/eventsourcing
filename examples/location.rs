@@ -26,9 +26,9 @@ impl AggregateState for LocationData {
     }
 }
 
-#[event_type_version(DOMAIN_VERSION)]
-#[event_source("events://github.com/pholactery/eventsourcing/samples/location")]
 #[derive(Serialize, Deserialize, Debug, Clone, Event)]
+#[event_source("events://github.com/pholactery/eventsourcing/samples/location")]
+#[event_type_version(DOMAIN_VERSION)]
 enum LocationEvent {
     LocationUpdated { lat: f32, long: f32, alt: f32 },
 }

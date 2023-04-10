@@ -10,8 +10,8 @@ use eventsourcing::{eventstore::MemoryEventStore, prelude::*, Result};
 
 const DOMAIN_VERSION: &str = "1.0";
 
-#[derive(Serialize, Deserialize, Debug, Clone, Event)]
 #[event_type_version(DOMAIN_VERSION)]
+#[derive(Serialize, Deserialize, Debug, Clone, Event)]
 #[event_source("events://github.com/pholactery/eventsourcing/samples/bank")]
 enum BankEvent {
     FundsWithdrawn(String, u32),
