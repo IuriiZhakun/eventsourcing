@@ -1,7 +1,9 @@
 const DOMAIN_VERSION: &str = "1.0";
 use async_trait::async_trait;
 
-use eventsourcing::{Aggregate, AggregateState, Dispatcher, Result};
+use eventsourcing::prelude::*;
+use eventsourcing::{Aggregate, AggregateState, Result};
+//use eventsourcing::{Aggregate, AggregateState, Dispatcher, Result};
 
 #[derive(Debug)]
 pub enum CombatCommand {
@@ -33,7 +35,7 @@ impl AggregateState for CombatState {
 #[derive(Serialize, Deserialize, Default)]
 pub struct Combat;
 
-pub struct CombatServices;
+//pub struct CombatServices;
 
 impl Aggregate for Combat {
     type Event = CombatEvent;

@@ -6,7 +6,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate eventsourcing_derive;
 use eventsourcing::EventMeta;
-use eventsourcing::{Aggregate, AggregateState, Dispatcher, Result};
+use eventsourcing::{Aggregate, AggregateState, Result};
+//use eventsourcing::{Dispatcher};
 
 //use chrono::prelude::*;
 
@@ -124,5 +125,5 @@ async fn eventstoredb_client() {
 
     println!("save result {:?}", se);
     //println!("save result {:?}", se.event_type());
-    assert_eq!(false, true);
+    //assert_eq!(false, true);
 }

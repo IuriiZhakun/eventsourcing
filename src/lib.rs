@@ -82,7 +82,9 @@
 //!        self.generation
 //!    }
 //!}
+//!# #[derive(Serialize, Deserialize, Default)]
 //!struct Location;
+//!
 //!impl Aggregate for Location {
 //!   type Event = LocationEvent;
 //!   type Command = LocationCommand;

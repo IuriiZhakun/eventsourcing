@@ -10,8 +10,8 @@ use eventsourcing::{eventstore::MemoryEventStore, prelude::*, Result};
 
 const DOMAIN_VERSION: &str = "1.0";
 
-#[event_type_version(DOMAIN_VERSION)]
 #[derive(Serialize, Deserialize, Debug, Clone, Event)]
+#[event_type_version(DOMAIN_VERSION)]
 #[event_source("events://github.com/pholactery/eventsourcing/samples/bank")]
 enum BankEvent {
     FundsWithdrawn(String, u32),
@@ -80,6 +80,7 @@ fn main() {
     let _account_store = MemoryEventStore::new();
 
     let deposit = BankCommand::DepositFunds("SAVINGS100".to_string(), 500);
+    let withdraw = BankCommand::WithdrawFunds("SPEND100".to_string(), 500);
 
     let initial_state = AccountData {
         balance: 800,
@@ -90,5 +91,11 @@ fn main() {
     let state = Account::apply_event(&initial_state, &post_deposit[0]).unwrap();
 
     println!("{:#?}", post_deposit);
+    println!("{:#?}", state);
+
+    let post_withdraw = Account::handle_command(&initial_state, &withdraw).unwrap();
+    let state = Account::apply_event(&initial_state, &post_withdraw[0]).unwrap();
+
+    println!("{:#?}", post_withdraw);
     println!("{:#?}", state);
 }

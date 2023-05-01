@@ -12,13 +12,14 @@ use crate::eventsourcing::eventstore::EventStoreClient;
 
 const DOMAIN_VERSION: &str = "1.0";
 
-#[derive(Serialize, Deserialize, Event, Clone)]
+#[derive(Serialize, Deserialize, Event, Clone, Debug)]
 #[event_type_version(DOMAIN_VERSION)]
 #[event_source("events://github.com/pholactery/eventsourcing/tests/integration")]
 enum TestEvent {
     Sample { val1: u32, val2: u32, val3: String },
 }
 
+use eventsourcing::EventMeta;
 use tokio;
 
 #[tokio::test]
@@ -36,7 +37,10 @@ async fn eventstoredb_client() {
 
     let edb = EventStoreDBClient::default();
     println!("created edb ");
-    let r = edb.append(se.clone(), "testEDB").await.unwrap();
+    let r = edb
+        .append(se.clone(), "testEDB", EventMeta::default())
+        .await
+        .unwrap();
     println!("save result {:?}", r);
 }
 

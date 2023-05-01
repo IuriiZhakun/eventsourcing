@@ -12,7 +12,7 @@ use eventsourcing::{eventstore::MemoryEventStore, prelude::*, Result};
 
 const DOMAIN_VERSION: &str = "1.0";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct LocationData {
     lat: f32,
     long: f32,
@@ -74,12 +74,9 @@ impl Aggregate for Location {
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let location_store = MemoryEventStore::new();
+    let (lat, long, alt) = (10.0, 52.0, 31.0);
 
-    let update = LocationCommand::UpdateLocation {
-        lat: 10.0,
-        long: 52.0,
-        alt: 31.0,
-    };
+    let update = LocationCommand::UpdateLocation { lat, long, alt };
     let old_state = LocationData {
         lat: 57.06,
         long: 36.07,
@@ -98,6 +95,16 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("Original state: {:?}", old_state);
     println!("Post-process state: {:?}", state);
+
+    assert_eq!(
+        state,
+        LocationData {
+            lat,
+            long,
+            alt,
+            generation: 1
+        }
+    );
 
     println!(
         "all events - {:#?}",
