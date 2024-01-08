@@ -120,6 +120,7 @@ extern crate serde_json;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 extern crate uuid;
+use deepsize::{Context, DeepSizeOf};
 
 pub use cloudevents::CloudEvent;
 use std::collections::HashMap;
@@ -172,10 +173,22 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct LID {
     pub id: Uuid,
-    pub links: Vec<Uuid>,
+    links: Vec<Uuid>,
+}
+
+impl DeepSizeOf for LID {
+    fn deep_size_of_children(&self, _context: &mut Context) -> usize {
+        (self.links.len() + 1) * std::mem::size_of::<Uuid>()
+    }
 }
 
 impl LID {
+    pub fn get_links(&self) -> &Vec<Uuid> {
+        &self.links
+    }
+    pub fn add_link(&mut self, id: Uuid) {
+        self.links.push(id)
+    }
     pub fn new() -> Self {
         LID {
             id: Uuid::new_v4(),
@@ -194,8 +207,18 @@ impl LID {
             links: vec![id.clone()],
         }
     }
+    pub fn from_links(links: Vec<Uuid>) -> Self {
+        LID {
+            id: Uuid::new_v4(),
+            links,
+        }
+    }
     pub fn next(&self) -> Self {
         LID::from(&self.id)
+    }
+
+    pub fn has(&self, id: &Uuid) -> bool {
+        self.links.contains(id)
     }
 }
 

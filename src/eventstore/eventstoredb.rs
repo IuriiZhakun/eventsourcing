@@ -8,7 +8,8 @@ use super::super::{Error, Event, Kind};
 use super::EventStoreClient;
 use eventstore::{Client, ClientSettings, EventData, WriteResult};
 use std::collections::HashMap;
-use tracing::{debug, info};
+use tokio::time::{sleep, Duration};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 /// Client for the eventstoredb Event Store
@@ -285,25 +286,34 @@ impl EventStoreClient for EventStoreDBClient {
         let e = re.map_err(|e| Error {
             kind: Kind::StoreFailure(format!("Failed to parse {:?} error {:?}", evt, e,)),
         })?;
-        let log_e = e.clone();
-        let res = self
-            .client
-            .append_to_stream(stream, &Default::default(), e)
-            .await;
-        match res {
-            Ok(WriteResult {
-                next_expected_version: _,
-                position: _,
-            }) => {
-                debug!("wrote {:?} ", log_e);
-                Ok(evt)
+        let max_retries = 3;
+        let mut retries = 0;
+        loop {
+            let res = self
+                .client
+                .append_to_stream(stream, &Default::default(), e.clone())
+                .await;
+            match res {
+                Ok(WriteResult {
+                    next_expected_version: _,
+                    position: _,
+                }) => {
+                    debug!("wrote {:?} ", e);
+                    return Ok(evt);
+                }
+                Err(kind) => {
+                    let msg = format!("Failed to post to event store {:?} error {:?}", evt, kind);
+                    if retries < max_retries {
+                        warn!(msg);
+                        retries += 1;
+                        sleep(Duration::from_millis(1000)).await;
+                    } else {
+                        return Err(Error {
+                            kind: Kind::StoreFailure(msg),
+                        });
+                    }
+                }
             }
-            Err(kind) => Err(Error {
-                kind: Kind::StoreFailure(format!(
-                    "Failed to post to event store {:?} error {:?}",
-                    evt, kind
-                )),
-            }),
         }
     }
 }
